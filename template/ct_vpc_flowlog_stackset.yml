@@ -1,0 +1,467 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: FlowLog - Infrastructure at the spoke account for VPC Flow Log automation
+Parameters:
+  StackSetName:
+    Type: String
+    Description: Name of the StackSet
+  OrgId:
+    Type: String
+    Description: The Amazon Organizations ID
+    MinLength: 12
+    MaxLength: 12
+    AllowedPattern: '^[o][\-][a-z0-9]{10}$'
+    ConstraintDescription: The Org Id must be a 12 character string starting with o- and followed by 10 lower case alphanumeric characters
+  MasterAccount:
+    Type: String
+    Description: AWS Account ID where the Control Tower deployed
+    AllowedPattern: '^[0-9]{12}$'
+    MinLength: 12
+    MaxLength: 12
+  MasterRegion:
+    Type: String
+    Description: Region where the Control Tower deployed    
+    Default: 'us-east-1'
+  FlowLogDestinationAccount:
+    Type: String
+    Description: AWS Account ID where the VPC Flow Log bucket will be created
+    AllowedPattern: '^[0-9]{12}$'
+    MinLength: 12
+    MaxLength: 12
+  FlowLogBucketName:
+    Type: String
+    MinLength: 3
+    MaxLength: 63
+    AllowedPattern: '[a-zA-Z0-9-.]*'
+    Description: Unique name for the S3 bucket in the destination account
+  EventBusDestinationAccount:
+    Type: String
+    Description: AWS Account ID where the dedicated Event bus will be created
+    AllowedPattern: '^[0-9]{12}$'
+    MinLength: 12
+    MaxLength: 12
+  EventBusName:
+    Type: String
+    Description: Select name of the dedicated event bus that will be created at the Hub account
+    Default: FlowLog-EventBus
+  ComplianceFrequency:
+    Type: Number
+    Default: "24"
+    Description: Frequency (in hours between 2 and 168, default is 24) to check Flow Logs compliance
+    MinValue: 2
+    MaxValue: 168
+    ConstraintDescription: Compliance Frequency must be a number between 2 and 168, inclusive.
+
+Mappings:
+  LambdaVariable:
+    Tag:
+      KeyList: ["flowlog", "flow-log", "flow_log", "FlowLog", "Flow-Log", "Flow_Log"]
+      Key: "flowlog, flow-log, flow_log, FlowLog, Flow-Log, Flow_Log"
+      All: "all, full, enable, active, true, yes"
+      Accept: "accept, pass, allow"
+      Reject: "reject, deny, block"
+    Role:
+      Hub: FlowLogHubRole
+      Spoke: FlowLogHubAssumeRole
+  SourceCode:
+    Key:
+      Activator: "ct_flowlog_activator.zip"
+      LifeCycle: "ct_flowlog_lifecycle.zip"
+  S3perRegion:
+    us-east-1:
+      NAME: marketplace-sa-resources-ct-us-east-1
+    us-east-2:
+      NAME: marketplace-sa-resources-ct-us-east-2
+    us-west-2:
+      NAME: marketplace-sa-resources-ct-us-west-2
+    eu-west-1:
+      NAME: marketplace-sa-resources-ct-eu-west-1
+    ap-southeast-2:
+      NAME: marketplace-sa-resources-ct-ap-southeast-2
+
+Conditions:
+  CreateS3Bucket: !And 
+    - !Equals
+      - !Ref FlowLogDestinationAccount
+      - !Ref AWS::AccountId
+    - !Equals 
+      - !Ref MasterRegion
+      - !Ref AWS::Region
+
+  OriginRegion: !Equals 
+    - !Ref MasterRegion
+    - !Ref AWS::Region
+
+  CreateEventBus: !Equals
+    - !Ref EventBusDestinationAccount
+    - !Ref AWS::AccountId
+
+  CreateEventBusOriginRegion: !And
+    - !Equals
+      - !Ref EventBusDestinationAccount
+      - !Ref AWS::AccountId
+    - !Equals 
+      - !Ref MasterRegion
+      - !Ref AWS::Region
+
+  NonEventBus: !Not
+    - !Equals
+      - !Ref EventBusDestinationAccount
+      - !Ref AWS::AccountId
+
+Resources:
+  S3Bucket:
+    Condition: CreateS3Bucket
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref FlowLogBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration: 
+          - ServerSideEncryptionByDefault: 
+              SSEAlgorithm: AES256
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W35
+            reason: "Supress bucket access logging requirement"
+
+  BucketPolicy:
+    Condition: CreateS3Bucket
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      PolicyDocument:
+        Id: S3BucketPolicy
+        Version: 2012-10-17
+        Statement:
+          - Sid: AWSLogDeliveryWrite
+            Effect: Allow
+            Principal:
+              Service: 'delivery.logs.amazonaws.com'
+            Action:
+              - 's3:PutObject'
+            Resource:
+              - !Join ['',['arn:aws:s3:::',!Ref S3Bucket, '/*']]
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+          - Sid: AWSLogDeliveryAclCheck
+            Effect: Allow
+            Principal:
+              Service: 'delivery.logs.amazonaws.com'
+            Action:
+              - 's3:GetBucketAcl'
+            Resource:
+              - !Join ['',['arn:aws:s3:::',!Ref S3Bucket]]
+      Bucket: !Ref S3Bucket
+
+  FlowLogEventBus:
+    Condition: CreateEventBus
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Ref EventBusName
+
+  FlowLogEventBusPolicy:
+    Condition: CreateEventBus
+    Type: AWS::Events::EventBusPolicy
+    Properties:
+        Action: "events:PutEvents"
+        Principal: "*"
+        StatementId: "AllowSpokeAccountPutEventsToHubAccount"
+        EventBusName: !Ref FlowLogEventBus
+        Condition:
+            Type: "StringEquals"
+            Key: "aws:PrincipalOrgID"
+            Value: !Ref OrgId
+
+  FlowLogActivatorRole:
+    Condition: CreateEventBusOriginRegion
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: FlowLogActivatorRole
+      Description: FlowLog - Role used by Lambda in Hub Account to enable VPC Flow Log
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+      - PolicyName: FlowLogActivator
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Resource: 
+              - !Join ['', ['arn:aws:iam::', '*', ':role/', !FindInMap [LambdaVariable,Role, Spoke]]]
+              - !Join ['', ['arn:aws:iam::', !Ref MasterAccount, ':role/', !FindInMap [LambdaVariable,Role, Hub]]]
+            Condition:
+              StringEquals:
+                "sts:ExternalId": !Ref OrgId
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource: !Sub 'arn:aws:lambda:*:${AWS::AccountId}:function:${AWS::AccountId}-FlowLogActivator'
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource:
+              -  !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*'
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: "Explicit role name required for reference on other resources" 
+
+
+  FlowLogActivator:
+    Condition: CreateEventBus
+    Type: "AWS::Lambda::Function"
+    Properties:
+      FunctionName: !Sub ${AWS::AccountId}-FlowLogActivator
+      Description: FlowLog - Function to handle incoming events and activate VPC Flow Log in spoke account
+      Handler: "ct_flowlog_activator.lambda_handler"
+      Role: !Sub 'arn:aws:iam::${AWS::AccountId}:role/FlowLogActivatorRole'
+      Code:
+        S3Bucket: !FindInMap [ S3perRegion, !Ref "AWS::Region", NAME ]
+        S3Key: !Join ["/", [!FindInMap ["SourceCode", "Key", "Activator"]]]
+      Runtime: "python3.7"
+      MemorySize: 128
+      Timeout: 300
+      ReservedConcurrentExecutions: 500
+      Environment:
+        Variables:
+            assume_role: !FindInMap [LambdaVariable,Role, Spoke]
+            org_id: !Ref OrgId
+            s3bucket: !Ref FlowLogBucketName
+            master_account: !Ref MasterAccount
+            master_role: !FindInMap [LambdaVariable,Role, Hub]
+            stackset_name: !Ref StackSetName
+            stackset_region: !Ref MasterRegion
+            tag_keys: !FindInMap [LambdaVariable,Tag, Key]
+            tag_all_values: !FindInMap [LambdaVariable,Tag, All]
+            tag_accept_values: !FindInMap [LambdaVariable,Tag, Accept]
+            tag_reject_values: !FindInMap [LambdaVariable,Tag, Reject]
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W58
+            reason: "Supress false warning since the Role is set using !Sub"
+
+  FlowLogTimerCheck:
+    Condition: CreateEventBus
+    Type: "AWS::Events::Rule"
+    Properties:
+      Name: FlowLogTag-TimerRule
+      Description: FlowLog - Periodic check to trigger FlowLogActivator Lambda
+      ScheduleExpression: !Sub "rate(${ComplianceFrequency} hours)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt FlowLogActivator.Arn
+          Id: TargetFunction
+
+  FlowLogTimerCheckEventPermission:
+    Condition: CreateEventBus
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FlowLogActivator
+      Principal: events.amazonaws.com
+      Action: lambda:InvokeFunction
+      SourceArn: !GetAtt FlowLogTimerCheck.Arn
+
+  FlowLogTagHubRule:
+    Condition: CreateEventBus
+    DependsOn:
+      - FlowLogEventBus
+    Type: AWS::Events::Rule
+    Properties:
+      Name: FlowLogTag-HubRule
+      Description: FlowLog - Trigger for create/update tag from spoke account to hub account via dedicated Event Bus
+      EventBusName: !Ref EventBusName
+      EventPattern:
+        {
+          "source": [
+            "aws.tag"
+          ],
+          "detail-type": [
+            "Tag Change on Resource"
+          ],
+          "detail": {
+            "changed-tag-keys": !FindInMap [LambdaVariable, Tag, KeyList],
+            "service": [
+              "ec2"
+            ],
+            "resource-type": [
+              "subnet",
+              "vpc"
+            ]
+          }
+        }
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt FlowLogActivator.Arn
+          Id: "TagCreateUpdateHubTrigger"
+
+  FlowLogTagHubRulePermission:
+    Condition: CreateEventBus
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FlowLogActivator
+      Principal: events.amazonaws.com
+      Action: lambda:InvokeFunction
+      SourceArn: !GetAtt FlowLogTagHubRule.Arn
+
+  FlowLogTagLocalRule:
+    Condition: CreateEventBus
+    DependsOn:
+      - FlowLogEventBus
+    Type: AWS::Events::Rule
+    Properties:
+      Name: FlowLogTag-LocalRule
+      Description: FlowLog - Trigger for create/update tag from local account via Default Event Bus
+      EventPattern:
+        {
+          "account": [
+            !Ref "AWS::AccountId"
+          ],
+          "source": [
+            "aws.tag"
+          ],
+          "detail-type": [
+            "Tag Change on Resource"
+          ],
+          "detail": {
+            "changed-tag-keys": !FindInMap [LambdaVariable, Tag, KeyList],
+            "service": [
+              "ec2"
+            ],
+            "resource-type": [
+              "subnet",
+              "vpc"
+            ]
+          }
+        }
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt FlowLogActivator.Arn
+          Id: "TagCreateUpdateLocalTrigger"
+
+  FlowLogTagLocalRulePermission:
+    Condition: CreateEventBus
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FlowLogActivator
+      Principal: events.amazonaws.com
+      Action: lambda:InvokeFunction
+      SourceArn: !GetAtt FlowLogTagLocalRule.Arn
+
+  FlowLogHubAssumeRole:
+    Type: AWS::IAM::Role
+    Condition: OriginRegion
+    Properties:
+      RoleName: !FindInMap [LambdaVariable,Role, Spoke]
+      Description: FlowLog - Role assumed by FlowLogActivator Lambda to access each linked/spoke account
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Join
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref EventBusDestinationAccount
+                  - ':root'
+            Action:
+              - sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref OrgId
+      Path: "/"
+      Policies:
+        - PolicyName: VPCFlowLogEnablerPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeFlowLogs
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeSubnets
+                  - ec2:CreateFlowLogs
+                  - ec2:DeleteFlowLogs
+                  - logs:CreateLogDelivery
+                  - logs:DeleteLogDelivery
+                Resource: '*'
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "Describe and Create Flow Logs require resource types = *"
+          - id: W28
+            reason: "Explicit role name required for reference on other resources"
+
+  FlowLogTagSpokeRule:
+    Condition: NonEventBus
+    Type: AWS::Events::Rule
+    Properties:
+      Name: FlowLogTag-SpokeRule
+      Description: FlowLog - Trigger for create/update tag from spoke account via dedicated Event Bus
+      EventPattern:
+        {
+          "account": [
+            !Ref "AWS::AccountId"
+          ],
+          "source": [
+            "aws.tag"
+          ],
+          "detail-type": [
+            "Tag Change on Resource"
+          ],
+          "detail": {
+            "changed-tag-keys": !FindInMap [LambdaVariable, Tag, KeyList],
+            "service": [
+              "ec2"
+            ],
+            "resource-type": [
+              "subnet",
+              "vpc"
+            ]
+          }
+        }
+      State: ENABLED
+      Targets:
+        - Arn: !Sub arn:aws:events:${AWS::Region}:${EventBusDestinationAccount}:event-bus/${EventBusName}
+          Id: "TagCreateUpdateTrigger"
+          RoleArn: !GetAtt FlowLogTagSpokeRuleDeliveryRole.Arn
+
+  FlowLogTagSpokeRuleDeliveryRole:
+    Condition: NonEventBus
+    Type: AWS::IAM::Role
+    Properties:
+      Description: FlowLog - Role to send event from Spoke account to the Hub account event buses
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+                Service: events.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: VPCTagEventBusDeliveryRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - events:PutEvents
+                Resource: !Sub arn:aws:events:${AWS::Region}:${EventBusDestinationAccount}:event-bus/${EventBusName}
