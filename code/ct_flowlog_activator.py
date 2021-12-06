@@ -29,10 +29,10 @@ logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
 session = boto3.Session()
-traffic_mode = ['DISABLE','REJECT', 'ACCEPT', 'ALL']
+traffic_mode = ['DISABLE', 'REJECT', 'ACCEPT', 'ALL']
 tag_keyword = str(os.environ['tag_keys']).replace(" ", "").split(",")
 resource_type_map = {
-    "vpc" : "VPC",
+    "vpc": "VPC",
     "subnet": "Subnet"
 }
 '''
@@ -42,6 +42,7 @@ Traffic mode:
 1 = Reject traffic only
 0 = Disable
 '''
+
 
 def get_flow_log_status(target_session, accountId, resourceId, region):
     '''
@@ -70,13 +71,15 @@ def get_flow_log_status(target_session, accountId, resourceId, region):
     except Exception as e:
         LOGGER.error("Could not describe Flow Log : {}".format(e))
 
+
 def get_flowlog_filter(traffic_type):
-    switcher={
-        'ALL':3,
-        'ACCEPT':2,
-        'REJECT':1
+    switcher = {
+        'ALL': 3,
+        'ACCEPT': 2,
+        'REJECT': 1
     }
-    return switcher.get(traffic_type, 0) # default no match will return 0
+    return switcher.get(traffic_type, 0)  # default no match will return 0
+
 
 def parse_ec2_tag(tags):
     '''
@@ -90,6 +93,7 @@ def parse_ec2_tag(tags):
 
     except Exception as e:
         LOGGER.error("Failed to parse EC2 tags: {}".format(e))
+
 
 def parse_flowlog_tag(tags):
     '''
@@ -109,10 +113,11 @@ def parse_flowlog_tag(tags):
                     flowlog_tag = 0
                 LOGGER.info("Found tag : {} = {}".format(key, value))
                 break
-        
+
         return flowlog_tag
     except Exception as e:
         LOGGER.error("Failed to search Flow Log tag: {}".format(e))
+
 
 def toggle_flowlog(target_session, accountId, resourceId, resourceType, flowLogTag, flowLogStatus, region):
     '''
@@ -146,6 +151,7 @@ def toggle_flowlog(target_session, accountId, resourceId, resourceType, flowLogT
     except Exception as e:
         LOGGER.error("Failed to modify Flow Log : {}".format(e))
 
+
 def create_flowlog(target_session, accountId, resourceId, resourceType, trafficType, destinationBucket, region):
     '''
     Create Flow Log with destination S3, using the specified traffic type
@@ -161,11 +167,12 @@ def create_flowlog(target_session, accountId, resourceId, resourceType, trafficT
             LogDestination=s3_location
         )
         LOGGER.info('Flow Log details : {}'.format(response))
-        if len (response['FlowLogIds']) > 0:
+        if len(response['FlowLogIds']) > 0:
             return response
-        
+
     except Exception as e:
         LOGGER.error("Could not create Flow Log : {}".format(e))
+
 
 def delete_flowlog(target_session, accountId, resourceId, region):
     '''
@@ -200,6 +207,7 @@ def delete_flowlog(target_session, accountId, resourceId, region):
     except Exception as e:
         LOGGER.error("Could not delete Flow Log : {}".format(e))
 
+
 def assume_role(aws_account_number, role_name, external_id):
     '''
     Assumes the provided role in each account and returns a session object
@@ -229,6 +237,7 @@ def assume_role(aws_account_number, role_name, external_id):
         LOGGER.error("Could not assume role : {}".format(e))
         raise
 
+
 def flow_log_handler(target_session, event, partition, resource_id, resource_type, tags, account_id, region):
     '''
     Handles the creation / deletion of vpc flow log, triggered by CloudWatch event Tag create / update / delete
@@ -238,18 +247,19 @@ def flow_log_handler(target_session, event, partition, resource_id, resource_typ
         LOGGER.info('Target Region: {}'.format(region))
         LOGGER.info('Target Resource id: {}'.format(resource_id))
 
-        # Proceed to check FlowLog status        
+        # Proceed to check FlowLog status
         flowlog_status = get_flow_log_status(target_session, account_id, resource_id, region)
         if flowlog_status > 0:
             LOGGER.info('Flow Logs currently enabled - Traffic Mode: {}'.format(traffic_mode[flowlog_status]))
         else:
             LOGGER.info('Flow Logs currently disabled')
-        
+
         flowlog_tag = parse_flowlog_tag(tags)
         toggle_flowlog(target_session, account_id, resource_id, resource_type, flowlog_tag, flowlog_status, region)
-                
+
     except Exception as e:
         LOGGER.error('Error - reason: {}'.format(e))
+
 
 def get_vpc_by_region(target_session, accountId, region):
     '''
@@ -280,6 +290,7 @@ def get_vpc_by_region(target_session, accountId, region):
         LOGGER.error("Could not describe VPC : {}".format(e))
         return []
 
+
 def get_subnet_by_region(target_session, accountId, region):
     '''
     Find all subnets in the region based on the account ID
@@ -309,15 +320,18 @@ def get_subnet_by_region(target_session, accountId, region):
         LOGGER.error("Could not describe Subnet : {}".format(e))
         return []
 
+
 def invoke_lambda(lambda_name, lambda_event, lambda_client, invoke_mode):
     '''
     Call Lambda function by the function name
     '''
     try:
-        response = lambda_client.invoke(FunctionName=lambda_name, InvocationType=invoke_mode, Payload = bytes(json.dumps(lambda_event, default=str),encoding='utf8'))
+        response = lambda_client.invoke(FunctionName=lambda_name, InvocationType=invoke_mode,
+                                        Payload=bytes(json.dumps(lambda_event, default=str), encoding='utf8'))
         return response
     except ClientError as e:
         LOGGER.error(e.response['Error']['Message'] + ": " + lambda_name)
+
 
 def list_stack_instance_by_region(target_session, stack_set_name, region):
     '''
@@ -335,23 +349,24 @@ def list_stack_instance_by_region(target_session, stack_set_name, region):
         for page in stackset_result:
             if 'Summaries' in page:
                 stackset_list.extend(page['Summaries'])
-        
+
         return stackset_list
-        
+
     except Exception as e:
         LOGGER.error("List Stack Instance error: %s" % e)
         return []
 
-def lambda_handler(event, context):    
+
+def lambda_handler(event, context):
     LOGGER.info('Lambda Handler - Start')
     LOGGER.info('REQUEST RECEIVED: {}'.format(json.dumps(event, default=str)))
 
     # Primary handler - takes cloudwatch timer and recursively call lambda for each accounts in the Org
     if 'detail-type' in event and event['detail-type'] == 'Scheduled Event':
         LOGGER.info("Using CloudWatch Timer Handler")
-        master_session = assume_role(os.environ['master_account'],os.environ['master_role'], os.environ['org_id'])
+        master_session = assume_role(os.environ['master_account'], os.environ['master_role'], os.environ['org_id'])
 
-        #Look at stackset for existing deployment and do enforcement
+        # Look at stackset for existing deployment and do enforcement
         stackset_name = str(os.environ['stackset_name'])
         stackset_instances = list_stack_instance_by_region(master_session, stackset_name, os.environ['stackset_region'])
         account_list = []
@@ -366,7 +381,7 @@ def lambda_handler(event, context):
             worker_event = {}
             worker_event['child-thread'] = str(uuid.uuid1())
             worker_event['master-thread'] = context.aws_request_id
-            worker_event['account'] = account_id            
+            worker_event['account'] = account_id
             response = invoke_lambda(str(context.function_name), worker_event, lambda_client, 'Event')
             LOGGER.info("Invoke Lambda for account: {} - Status: {}".format(account_id, response))
 
@@ -377,28 +392,28 @@ def lambda_handler(event, context):
         partition = context.invoked_function_arn.split(":")[1]
         account_id = event['account']
         region = region = str(context.invoked_function_arn).split(":")[3]
-        target_session = assume_role(account_id, os.environ['assume_role'], os.environ['org_id'])     
-             
+        target_session = assume_role(account_id, os.environ['assume_role'], os.environ['org_id'])
+
         vpc_ids = get_vpc_by_region(target_session, account_id, region)
         for vpc in vpc_ids:
             if 'Tags' in vpc:
                 tags = parse_ec2_tag(vpc['Tags'])
-                flow_log_handler(target_session, event, partition, vpc['VpcId'], 'VPC', tags , account_id, region)                            
+                flow_log_handler(target_session, event, partition, vpc['VpcId'], 'VPC', tags, account_id, region)
 
         subnet_ids = get_subnet_by_region(target_session, account_id, region)
         for subnet in subnet_ids:
             if 'Tags' in subnet:
                 tags = parse_ec2_tag(subnet['Tags'])
-                flow_log_handler(target_session, event, partition, subnet['SubnetId'], 'Subnet', tags , account_id, region)
+                flow_log_handler(target_session, event, partition, subnet['SubnetId'], 'Subnet', tags, account_id, region)
 
     # Custom handler takes Event Bus from hub account for tag update at subnet and vpc level
     elif 'detail-type' in event and event['detail-type'] == 'Tag Change on Resource':
         for key in event['detail']['changed-tag-keys']:
             if str.lower(key) in tag_keyword:
-                LOGGER.info("Using Event Bus Handler")                
+                LOGGER.info("Using Event Bus Handler")
                 partition = context.invoked_function_arn.split(":")[1]
 
-                if event['detail']['resource-type'] in ['vpc', 'subnet']:                    
+                if event['detail']['resource-type'] in ['vpc', 'subnet']:
                     for resource in event['resources']:
                         resource_id = resource.split(":")[5].split("/")[1]
                         account_id = event['account']
@@ -406,7 +421,7 @@ def lambda_handler(event, context):
                         tags = event['detail']['tags']
                         resource_type = resource_type_map[event['detail']['resource-type']]
                         target_session = assume_role(account_id, os.environ['assume_role'], os.environ['org_id'])
-                        flow_log_handler(target_session, event, partition, resource_id, resource_type, tags , account_id, region)
+                        flow_log_handler(target_session, event, partition, resource_id, resource_type, tags, account_id, region)
             else:
                 LOGGER.info("Skipping non supported tag: {}".format(key))
 
