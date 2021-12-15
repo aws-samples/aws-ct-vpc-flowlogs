@@ -40,10 +40,10 @@ resources:
         parameter_value: "$[alfred_ssm_/org/core/OrganizationID]"
 
       - parameter_key: "EventBusDestinationAccount" # Typiclly this will be the NetworkHub account
-        parameter_value: "220969071716"
+        parameter_value: "<REPLACE ME>"
 
       - parameter_key: "BaselineCloudTrailStackArn" # Copy this this from mgmt account in cloudformation stacksets for AWSControlTowerBP-BASELINE-CLOUDTRAIL
-        parameter_value: "arn:aws:cloudformation:ap-southeast-2:238584185111:stackset/AWSControlTowerBP-BASELINE-CLOUDTRAIL:0a66b52e-0ce9-4385-837d-8aab503e32fe"
+        parameter_value: "<REPLACE ME>"
     deploy_method: stack_set
     deployment_targets:
       accounts:
@@ -58,7 +58,7 @@ resources:
         parameter_value: "$[alfred_ssm_/org/core/OrganizationID]"
 
       - parameter_key: "EventBusDestinationAccount" # Network hub account
-        parameter_value: "220969071716"
+        parameter_value: "<REPLACE ME>"
 
       - parameter_key: "EventBusName"
         parameter_value: "FlowLog-EventBus"
@@ -103,7 +103,7 @@ resources:
         parameter_value: "AWSControlTowerBP-BASELINE-CLOUDTRAIL"  # do not change this, used to get all accounts managed by Control Tower.
 
       - parameter_key: "BaselineCloudTrailStackArn"
-        parameter_value: "arn:aws:cloudformation:ap-southeast-2:238584185111:stackset/AWSControlTowerBP-BASELINE-CLOUDTRAIL:0a66b52e-0ce9-4385-837d-8aab503e32fe"  # find this from mgmt account in cloudformation stacksets
+        parameter_value: "<REPLACE ME>"  # find this from mgmt account in cloudformation stacksets
 
       - parameter_key: "S3LambdaBucket"
         parameter_value: "$[alfred_ssm_/org/primary/storagebucket]"
