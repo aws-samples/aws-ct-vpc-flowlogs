@@ -1,0 +1,121 @@
+# This is a sample, non-production-ready file
+# © 2021 Amazon Web Services, Inc. or its affiliates. All Rights Reserved.  
+# This AWS Content is provided subject to the terms of the AWS Customer Agreement available at  
+# http://aws.amazon.com/agreement or other written agreement between Customer and either
+# Amazon Web Services, Inc. or Amazon Web Services EMEA SARL or both.
+
+---
+#Default region for deploying Custom Control Tower: Code Pipeline, Step functions, Lambda, SSM parameters, and StackSets
+region: ap-southeast-2
+version: 2021-03-15
+
+# Control Tower Custom CloudFormation Resources
+resources: 
+
+  - name: VPCFlowLogsBucket
+    resource_file: templates/vpc_flowlog_logging_bucket.template
+    parameters:
+      - parameter_key: "OrganizationId"
+        parameter_value: "$[alfred_ssm_/org/core/OrganizationID]"
+
+      - parameter_key: "SSEAlgorithm"
+        parameter_value: "AES256"
+
+      - parameter_key: "KMSMasterKeyID"
+        parameter_value: ""
+    deploy_method: stack_set
+    deployment_targets:
+      accounts:
+        - Audit
+    export_outputs:
+      - name: /org/sharedservice/networking/vpcflowlogsbucket
+        value: $[output_oBucketName]
+    regions:
+      - ap-southeast-2
+
+  - name: VPCFlowLogsMgmtRole
+    resource_file: templates/vpc_flowlog_mgmt.template
+    parameters:
+      - parameter_key: "OrganizationId"
+        parameter_value: "$[alfred_ssm_/org/core/OrganizationID]"
+
+      - parameter_key: "EventBusDestinationAccount" # Typiclly this will be the NetworkHub account
+        parameter_value: "220969071716"
+
+      - parameter_key: "BaselineCloudTrailStackArn" # Copy this this from mgmt account in cloudformation stacksets for AWSControlTowerBP-BASELINE-CLOUDTRAIL
+        parameter_value: "arn:aws:cloudformation:ap-southeast-2:238584185111:stackset/AWSControlTowerBP-BASELINE-CLOUDTRAIL:0a66b52e-0ce9-4385-837d-8aab503e32fe"
+    deploy_method: stack_set
+    deployment_targets:
+      accounts:
+        - Management
+    regions:
+      - ap-southeast-2
+
+  - name: VPCFlowLogRoleInSpoke
+    resource_file: templates/vpc_flowlog_spoke.template
+    parameters:
+      - parameter_key: "OrganizationId"
+        parameter_value: "$[alfred_ssm_/org/core/OrganizationID]"
+
+      - parameter_key: "EventBusDestinationAccount" # Network hub account
+        parameter_value: "220969071716"
+
+      - parameter_key: "EventBusName"
+        parameter_value: "FlowLog-EventBus"
+
+      - parameter_key: "ControlTowerMasterRegion"
+        parameter_value: "ap-southeast-2"
+    deploy_method: stack_set
+    deployment_targets:
+      organizational_units:
+        - Security
+        - Infrastructure
+        - NonProduction
+        - Production
+    regions:
+      - ap-southeast-2
+
+  - name: VPCFlowLogAutomationInHub
+    resource_file: templates/vpc_flowlog_automation_in_hub.template
+    parameters:
+      - parameter_key: "OrganizationId"
+        parameter_value: "$[alfred_ssm_/org/core/OrganizationID]"
+
+      - parameter_key: "MgmtAccountId"
+        parameter_value: "$[alfred_ssm_/org/core/ManagementAccountId]"
+
+      - parameter_key: "ControlTowerMasterRegion"
+        parameter_value: "ap-southeast-2"
+
+      - parameter_key: "FlowLogBucketName" 
+        parameter_value: "$[alfred_ssm_/org/sharedservice/networking/vpcflowlogsbucket]"
+
+      - parameter_key: "EventBusDestinationAccount" # Network hub account
+        parameter_value: "220969071716"
+
+      - parameter_key: "EventBusName"
+        parameter_value: "FlowLog-EventBus"
+
+      - parameter_key: "ComplianceFrequency" # how often to check for tag updates by schedule
+        parameter_value: "24"
+
+      - parameter_key: "BaselineCloudTrailStackSetName"
+        parameter_value: "AWSControlTowerBP-BASELINE-CLOUDTRAIL"  # do not change this, used to get all accounts managed by Control Tower.
+
+      - parameter_key: "BaselineCloudTrailStackArn"
+        parameter_value: "arn:aws:cloudformation:ap-southeast-2:238584185111:stackset/AWSControlTowerBP-BASELINE-CLOUDTRAIL:0a66b52e-0ce9-4385-837d-8aab503e32fe"  # find this from mgmt account in cloudformation stacksets
+
+      - parameter_key: "S3LambdaBucket"
+        parameter_value: "$[alfred_ssm_/org/primary/storagebucket]"
+
+      - parameter_key: "S3LambdaBucketKey"
+        parameter_value: "security/vpcflowlogs/ct_flowlog_activator.zip"
+
+      - parameter_key: "DefaultTrafficLoggingMode" # Important! On first deployment, all accounts managed by Control Tower will have VPC flow logs set to this value
+        parameter_value: "REJECT"
+    deploy_method: stack_set
+    deployment_targets:
+      accounts:
+        - NetworkingHub
+    regions:
+      - ap-southeast-2

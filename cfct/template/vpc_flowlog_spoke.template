@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: FlowLog - Infrastructure at the spoke account for VPC Flow Log automation
+Parameters:
+  EventBusDestinationAccount:
+    Type: String
+    Description: AWS Account ID where the dedicated Event bus will be created
+    AllowedPattern: '^[0-9]{12}$'
+    MinLength: 12
+    MaxLength: 12
+  EventBusName:
+    Type: String
+    Description: Select name of the dedicated event bus that will be created at the Hub account
+    Default: FlowLog-EventBus
+
+Mappings:
+  LambdaVariable:
+    Tag:
+      KeyList: ["flowlog", "flow-log", "flow_log", "FlowLog", "Flow-Log", "Flow_Log"]
+      Key: "flowlog, flow-log, flow_log, FlowLog, Flow-Log, Flow_Log"
+      All: "all, full, enable, active, true, yes"
+      Accept: "accept, pass, allow"
+      Reject: "reject, deny, block"
+    Role:
+      Hub: FlowLogHubRole
+      Spoke: FlowLogHubAssumeRole
+
+Resources:
+
+  FlowLogTagSpokeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: FlowLogTag-SpokeRule
+      Description: FlowLog - Trigger for create/update tag from spoke account via dedicated Event Bus
+      EventPattern:
+        {
+          "account": [
+            !Ref "AWS::AccountId"
+          ],
+          "source": [
+            "aws.tag"
+          ],
+          "detail-type": [
+            "Tag Change on Resource"
+          ],
+          "detail": {
+            "changed-tag-keys": !FindInMap [LambdaVariable, Tag, KeyList],
+            "service": [
+              "ec2"
+            ],
+            "resource-type": [
+              "subnet",
+              "vpc"
+            ]
+          }
+        }
+      State: ENABLED
+      Targets:
+        - Arn: !Sub arn:aws:events:${AWS::Region}:${EventBusDestinationAccount}:event-bus/${EventBusName}
+          Id: "TagCreateUpdateTrigger"
+          RoleArn: !GetAtt FlowLogTagSpokeRuleDeliveryRole.Arn
+
+  FlowLogTagSpokeRuleDeliveryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: FlowLog - Role to send event from Spoke account to the Hub account event buses
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+                Service: events.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: VPCTagEventBusDeliveryRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - events:PutEvents
+                Resource: !Sub arn:aws:events:${AWS::Region}:${EventBusDestinationAccount}:event-bus/${EventBusName}
