@@ -17,10 +17,5 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 set -ex
-CWD=$(pwd)
 
-cd lambdazip || exit 1
-
-zip -j ct_flowlog_activator.zip ../code/ct_flowlog_activator.py
-
-cd "${CWD}" || exit 1
+zip -j ct_flowlog_activator.zip code/ct_flowlog_activator.py

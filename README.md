@@ -11,13 +11,13 @@ There are two deployment methods:
 
 Included in this Repository is a version of the code from the blog which can be deployed via the [Customizations for Control Tower (CfCT)](https://docs.aws.amazon.com/solutions/latest/customizations-for-aws-control-tower/overview.html) solution.
 
-This version differs in that immediately on deployment, flow logs in all accounts managed by Control Tower are modified to the setting defined in the [manifest.yaml](./manifest.yaml) file - the default in this repo is 'REJECT', but if you wish to have no effect on deployment (and use the tags as per the blog post), set this to DISABLE in the manifest file.
+This version differs in that immediately on deployment, flow logs in all accounts managed by Control Tower are modified to the value of the parameter **DefaultTrafficLoggingMode** defined in the [manifest.yaml](./manifest.yaml) file. The default filter setting is 'REJECT', but if you wish to have no effect on deployment (and use the tags as per the blog post), set this to DISABLE in the manifest file.
 
 ### Zip and upload lambda
 
 As per other CfCT customizations, lambda's used as custom resources should be uploaded to a location prior to executing the CfCT pipeline. 
 
-To create the lambda zip, execute `./zip_lambda.sh`
+To create the lambda zip, execute `./zip_lambda.sh`. This creates a zip file in the lambdazip folder
 
 Then upload to a bucket that is accessible to the AWS Organization, and enter the bucket name into the SSM parameter in mgmt account with key: `/org/primary/storagebucket`. The default values in the manifest file refer to this location (which can be changed if desired)
 
