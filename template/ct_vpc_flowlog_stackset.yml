@@ -120,6 +120,8 @@ Resources:
         ServerSideEncryptionConfiguration: 
           - ServerSideEncryptionByDefault: 
               SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
     Metadata:
       cfn_nag:
         rules_to_suppress:
