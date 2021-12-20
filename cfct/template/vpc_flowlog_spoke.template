@@ -18,7 +18,6 @@ Parameters:
     MaxLength: 12
     AllowedPattern: '^[o][\-][a-z0-9]{10}$'
     ConstraintDescription: The Org Id must be a 12 character string starting with o- and followed by 10 lower case alphanumeric characters
-    Default: o-4nz2er5kw3
   ControlTowerMasterRegion:
     Type: String
     Description: Region where the Control Tower deployed    

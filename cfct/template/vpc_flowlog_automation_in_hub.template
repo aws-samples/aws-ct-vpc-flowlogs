@@ -8,7 +8,6 @@ Parameters:
   BaselineCloudTrailStackArn:
     Type: String
     Description: ARN of the StackSet to find accounts from.
-    Default: arn:aws:cloudformation:ap-southeast-2:238584185111:stackset/AWSControlTowerBP-BASELINE-CLOUDTRAIL:0a66b52e-0ce9-4385-837d-8aab503e32fe
   OrganizationId:
     Type: String
     Description: The Amazon Organizations ID
@@ -16,14 +15,12 @@ Parameters:
     MaxLength: 12
     AllowedPattern: '^[o][\-][a-z0-9]{10}$'
     ConstraintDescription: The Org Id must be a 12 character string starting with o- and followed by 10 lower case alphanumeric characters
-    Default: o-4nz2er5kw3
   MgmtAccountId:
     Type: String
     Description: AWS Account ID where the Control Tower deployed
     AllowedPattern: '^[0-9]{12}$'
     MinLength: 12
     MaxLength: 12
-    Default: 238584185111
   ControlTowerMasterRegion:
     Type: String
     Description: Region where the Control Tower deployed    
@@ -34,14 +31,12 @@ Parameters:
     MaxLength: 63
     AllowedPattern: '[a-zA-Z0-9-.]*'
     Description: Unique name for the S3 bucket in the destination account
-    Default: control-tower-vpcflowlogs-433069772295-ap-southeast-2
   EventBusDestinationAccount:
     Type: String
     Description: AWS Account ID where the dedicated Event bus will be created
     AllowedPattern: '^[0-9]{12}$'
     MinLength: 12
     MaxLength: 12
-    Default: 220969071716
   EventBusName:
     Type: String
     Description: Select name of the dedicated event bus that will be created at the Hub account
@@ -57,7 +52,6 @@ Parameters:
     Type: String
     Description: >
       The S3 bucket that contains the lambda solution file
-    Default: control-tower-storage-433069772295-ap-southeast-2
   S3LambdaBucketKey:
     Type: String
     Description: >

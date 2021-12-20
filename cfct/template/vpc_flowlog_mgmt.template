@@ -8,7 +8,6 @@ Parameters:
     MaxLength: 12
     AllowedPattern: '^[o][\-][a-z0-9]{10}$'
     ConstraintDescription: The Org Id must be a 12 character string starting with o- and followed by 10 lower case alphanumeric characters
-    Default: o-4nz2er5kw3
   EventBusDestinationAccount:
     Type: String
     Description: AWS Account ID where the dedicated Event bus will be created (usually NetworkHub)
@@ -19,7 +18,6 @@ Parameters:
   BaselineCloudTrailStackArn:
     Type: String
     Description: ARN of the StackSet deployed from Control Tower (AWSControlTowerBP-BASELINE-CLOUDTRAIL in mgmt account)
-    Default: arn:aws:cloudformation:ap-southeast-2:238584185111:stackset/AWSControlTowerBP-BASELINE-CLOUDTRAIL:0a66b52e-0ce9-4385-837d-8aab503e32fe
 
 Resources:
   FlowLogHubRole:
