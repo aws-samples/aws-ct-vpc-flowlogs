@@ -75,6 +75,7 @@ Resources:
           - id: F16
             reason: "We can allow * for the Principal as we are limiting access to the Org."
     Properties:
+      Bucket: !If [UseAES256, !Ref S3BucketFlowLoggingSSE, !Ref S3BucketFlowLoggingKMS]
       PolicyDocument:
         Id: S3BucketPolicy
         Version: 2012-10-17
@@ -86,7 +87,7 @@ Resources:
             Action:
               - 's3:PutObject'
             Resource:
-              - !Sub "control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}/*"
+              - !Sub "arn:aws:s3:::control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}/*"
             Condition:
               StringEquals:
                 s3:x-amz-acl: bucket-owner-full-control
@@ -97,18 +98,18 @@ Resources:
             Action:
               - 's3:GetBucketAcl'
             Resource:
-              - !Sub "control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}"
+              - !Sub "arn:aws:s3:::control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}"
           - Sid: AllowOrganizationRead
             Effect: Allow
             Principal: "*"
             Action: 
               - s3:GetObject
             Resource:
-              - !Sub "control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}/*"
+              - !Sub "arn:aws:s3:::control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}/*"
             Condition: 
               StringEquals:
                 aws:PrincipalOrgID: !Ref OrganizationId
-      Bucket: !If [UseAES256, !Ref S3BucketFlowLoggingSSE, !Ref S3BucketFlowLoggingKMS]
+      
 
 Outputs:
   oBucketName:

@@ -11,6 +11,18 @@ Parameters:
     Type: String
     Description: Select name of the dedicated event bus that will be created at the Hub account
     Default: FlowLog-EventBus
+  OrganizationId:
+    Type: String
+    Description: The Amazon Organizations ID
+    MinLength: 12
+    MaxLength: 12
+    AllowedPattern: '^[o][\-][a-z0-9]{10}$'
+    ConstraintDescription: The Org Id must be a 12 character string starting with o- and followed by 10 lower case alphanumeric characters
+    Default: o-4nz2er5kw3
+  ControlTowerMasterRegion:
+    Type: String
+    Description: Region where the Control Tower deployed    
+    Default: 'ap-southeast-2'
 
 Mappings:
   LambdaVariable:
@@ -24,7 +36,58 @@ Mappings:
       Hub: FlowLogHubRole
       Spoke: FlowLogHubAssumeRole
 
+Conditions:
+  
+  OriginRegion: !Equals 
+    - !Ref ControlTowerMasterRegion
+    - !Ref AWS::Region
+
 Resources:
+
+  FlowLogHubAssumeRole:
+    Type: AWS::IAM::Role
+    Condition: OriginRegion
+    Properties:
+      RoleName: !FindInMap [LambdaVariable,Role, Spoke]
+      Description: FlowLog - Role assumed by FlowLogActivator Lambda to access each linked/spoke account
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 'lambda.amazonaws.com'
+            Action: 'sts:AssumeRole'
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${EventBusDestinationAccount}:root'
+            Action:
+              - sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref OrganizationId
+      Path: "/"
+      Policies:
+        - PolicyName: VPCFlowLogEnablerPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeFlowLogs
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeSubnets
+                  - ec2:CreateFlowLogs
+                  - ec2:DeleteFlowLogs
+                  - logs:CreateLogDelivery
+                  - logs:DeleteLogDelivery
+                Resource: '*'
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "Describe and Create Flow Logs require resource types = *"
+          - id: W28
+            reason: "Explicit role name required for reference on other resources"
+
 
   FlowLogTagSpokeRule:
     Type: AWS::Events::Rule
