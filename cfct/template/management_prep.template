@@ -1,0 +1,77 @@
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this
+# software and associated documentation files (the "Software"), to deal in the Software
+# without restriction, including without limitation the rights to use, copy, modify,
+# merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Prepares the Management Account for adding custom solutions
+
+Parameters:
+  OrganizationId:
+    Type: 'String'
+    Description: AWS Organization Id of Control Tower
+
+  ManagementAccountId:
+    Type: 'String'
+    Description: AWS Account ID of the Organization Management Account
+
+  NameforSSMParameterforOrganizationId:
+    Type: String
+    Description: Name of the SSM Parameter under which the AWS Organization ID of the CTLZ will be stored
+    Default: /org/core/OrganizationID
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Key Account IDs"
+        Parameters:
+         - ManagementAccountId
+      -
+        Label:
+          default: "Organization Id"
+        Parameters:
+         - OrganizationId
+      -
+        Label:
+          default: "SSM Parameter Keys"
+        Parameters:
+         - NameforSSMParameterforOrganizationId
+
+Resources:
+  OrganizationIDSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref NameforSSMParameterforOrganizationId
+      Type: String
+      Value: !Ref OrganizationId
+
+  AWSControlTowerExecutionforManagement:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AWSControlTowerExecution
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AdministratorAccess
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS: 
+            - !Join [ "", ["arn:aws:iam::", !Ref ManagementAccountId, ":root"]]
+          Action:
+          - sts:AssumeRole
+      Path: "/"

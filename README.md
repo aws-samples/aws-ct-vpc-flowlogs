@@ -21,6 +21,14 @@ To create the lambda zip, execute `./zip_lambda.sh`. This creates a `ct_flowlog_
 
 ### CfCT configuration
 
+Pre-reqs:
+1. Deploy the `management_prep.template` into the management account (where control tower service is activated).
+
+
+This deploys the `AWSControlTowerExecution` role, so that customisations such as this one are able to be deployed into the management account. It also enters some commonly used values into SSM parameter store, and these are referenced inside the manifest file, using the `alfred_ssm` macro (more on this macro, and the schema of the manifest file can be found in the [CfCT Developers Guide](https://s3.amazonaws.com/solutions-reference/customizations-for-aws-control-tower/latest/customizations-for-aws-control-tower-developer-guide.pdf))
+
+
+CfCT Configuration:
 1. Append the 4 resources of the Resources section of the [manifest file](./manifest.yaml) to your own CfCT manifest file. 
 1. Check and configure the parameters within each resource section to reflect your environment. Substitue all `<REPLACE ME>` entries with the correct values for your environment.
 1. Deploy your CfCT solution as per your setup (using zip or codecommit etc)
