@@ -22,7 +22,7 @@ To create the lambda zip, execute `./zip_lambda.sh`. This creates a `ct_flowlog_
 ### CfCT configuration
 
 1. Append the 4 resources of the Resources section of the [manifest file](./manifest.yaml) to your own CfCT manifest file. 
-1. Check and configure the parameters within each resource section to reflect your environment.
+1. Check and configure the parameters within each resource section to reflect your environment. Substitue all `<REPLACE ME>` entries with the correct values for your environment.
 1. Deploy your CfCT solution as per your setup (using zip or codecommit etc)
 
 ### Deploying via console

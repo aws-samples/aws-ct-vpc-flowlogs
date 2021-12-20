@@ -15,8 +15,8 @@ resources:
   - name: VPCFlowLogsBucket
     resource_file: templates/vpc_flowlog_logging_bucket.template
     parameters:
-      - parameter_key: "OrganizationId"
-        parameter_value: "$[alfred_ssm_/org/core/OrganizationID]"
+      - parameter_key: "OrganizationId" # Find this from the AWS Organizations console 
+        parameter_value: "<REPLACE ME>"
 
       - parameter_key: "SSEAlgorithm"
         parameter_value: "AES256"
@@ -37,7 +37,7 @@ resources:
     resource_file: templates/vpc_flowlog_mgmt.template
     parameters:
       - parameter_key: "OrganizationId"
-        parameter_value: "$[alfred_ssm_/org/core/OrganizationID]"
+        parameter_value: "<REPLACE ME>" # Find this from the AWS Organizations console 
 
       - parameter_key: "EventBusDestinationAccount" # Typiclly this will be the NetworkHub account
         parameter_value: "<REPLACE ME>"
@@ -55,7 +55,7 @@ resources:
     resource_file: templates/vpc_flowlog_spoke.template
     parameters:
       - parameter_key: "OrganizationId"
-        parameter_value: "$[alfred_ssm_/org/core/OrganizationID]"
+        parameter_value: "<REPLACE ME>"
 
       - parameter_key: "EventBusDestinationAccount" # Network hub account
         parameter_value: "<REPLACE ME>"
@@ -63,11 +63,11 @@ resources:
       - parameter_key: "EventBusName"
         parameter_value: "FlowLog-EventBus"
 
-      - parameter_key: "ControlTowerMasterRegion"
-        parameter_value: "ap-southeast-2"
+      - parameter_key: "ControlTowerMasterRegion" # Example: ap-southeast-2
+        parameter_value: "<REPLACE ME>"
     deploy_method: stack_set
     deployment_targets:
-      organizational_units:
+      organizational_units: # List here all the OUs you wish to apply the VPC Flow Logs to
         - Security
         - Infrastructure
         - NonProduction
@@ -79,10 +79,10 @@ resources:
     resource_file: templates/vpc_flowlog_automation_in_hub.template
     parameters:
       - parameter_key: "OrganizationId"
-        parameter_value: "$[alfred_ssm_/org/core/OrganizationID]"
+        parameter_value: "<REPLACE ME>"
 
       - parameter_key: "MgmtAccountId"
-        parameter_value: "$[alfred_ssm_/org/core/ManagementAccountId]"
+        parameter_value: "<REPLACE ME>"
 
       - parameter_key: "ControlTowerMasterRegion"
         parameter_value: "ap-southeast-2"
@@ -91,7 +91,7 @@ resources:
         parameter_value: "$[alfred_ssm_/org/sharedservice/networking/vpcflowlogsbucket]"
 
       - parameter_key: "EventBusDestinationAccount" # Network hub account
-        parameter_value: "220969071716"
+        parameter_value: "<REPLACE ME>"
 
       - parameter_key: "EventBusName"
         parameter_value: "FlowLog-EventBus"
