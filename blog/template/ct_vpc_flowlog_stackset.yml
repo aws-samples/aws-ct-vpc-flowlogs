@@ -120,8 +120,6 @@ Resources:
         ServerSideEncryptionConfiguration: 
           - ServerSideEncryptionByDefault: 
               SSEAlgorithm: AES256
-      VersioningConfiguration:
-        Status: Enabled
     Metadata:
       cfn_nag:
         rules_to_suppress:
@@ -155,16 +153,6 @@ Resources:
               - 's3:GetBucketAcl'
             Resource:
               - !Join ['',['arn:aws:s3:::',!Ref S3Bucket]]
-          - Sid: AllowSSLRequestsOnly
-            Effect: Deny
-            Principal: '*'
-            Action: 's3:*'
-            Resource:
-              - !Join ['',['arn:aws:s3:::',!Ref S3Bucket]]
-              - !Join ['',['arn:aws:s3:::',!Ref S3Bucket, /*]]
-            Condition:
-              Bool:
-                aws:SecureTransport: false
       Bucket: !Ref S3Bucket
 
   FlowLogEventBus:
