@@ -120,6 +120,11 @@ Resources:
         ServerSideEncryptionConfiguration: 
           - ServerSideEncryptionByDefault: 
               SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      OwnershipControls: 
+        Rules: 
+          - ObjectOwnership: BucketOwnerEnforced
     Metadata:
       cfn_nag:
         rules_to_suppress:
@@ -153,6 +158,16 @@ Resources:
               - 's3:GetBucketAcl'
             Resource:
               - !Join ['',['arn:aws:s3:::',!Ref S3Bucket]]
+          - Sid: AllowSSLRequestsOnly
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Join ['',['arn:aws:s3:::',!Ref S3Bucket]]
+              - !Join ['',['arn:aws:s3:::',!Ref S3Bucket, /*]]
+            Condition:
+              Bool:
+                aws:SecureTransport: false
       Bucket: !Ref S3Bucket
 
   FlowLogEventBus:
@@ -221,7 +236,6 @@ Resources:
         rules_to_suppress:
           - id: W28
             reason: "Explicit role name required for reference on other resources" 
-
 
   FlowLogActivator:
     Condition: CreateEventBus
