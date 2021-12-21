@@ -23,6 +23,9 @@ To create the lambda zip, execute `./zip_lambda.sh`. This creates a `ct_flowlog_
 
 Pre-reqs:
 1. Deploy the `management_prep.template` into the management account (where control tower service is activated).
+1. Move  management account into a "Management" OU. This is because CfCT by default cannot deploy to accounts not in an OU.
+   1. Use AWS Control Tower console to create the new OU. 
+   1. Use AWS Organizations console to move the root account into the new OU
 
 
 This deploys the `AWSControlTowerExecution` role, so that customisations such as this one are able to be deployed into the management account. It also enters some commonly used values into SSM parameter store, and these are referenced inside the manifest file, using the `alfred_ssm` macro (more on this macro, and the schema of the manifest file can be found in the [CfCT Developers Guide](https://s3.amazonaws.com/solutions-reference/customizations-for-aws-control-tower/latest/customizations-for-aws-control-tower-developer-guide.pdf))
