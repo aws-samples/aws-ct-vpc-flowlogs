@@ -114,7 +114,7 @@ Resources:
               - 's3:GetBucketAcl'
             Resource:
               - !Sub "arn:aws:s3:::control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}"
-          - Sid: AllowOrganizationRead
+          - Sid: AllowOrganizationRead # Change this to suit your needs. This gives anyone read access to the VPC flow logs in your AWS Org.
             Effect: Allow
             Principal: "*"
             Action: 
