@@ -1,0 +1,76 @@
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this
+# software and associated documentation files (the "Software"), to deal in the Software
+# without restriction, including without limitation the rights to use, copy, modify,
+# merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+AWSTemplateFormatVersion: 2010-09-09
+Description: FlowLog - Infrastructure at the hub account for VPC Flow Log automation
+Parameters:
+  OrganizationId:
+    Type: String
+    Description: The Control Tower Organizations ID
+    MinLength: 12
+    MaxLength: 12
+    AllowedPattern: '^[o][\-][a-z0-9]{10}$'
+    ConstraintDescription: The Org Id must be a 12 character string starting with o- and followed by 10 lower case alphanumeric characters
+  EventBusDestinationAccount:
+    Type: String
+    Description: AWS Account ID where the dedicated Event bus will be created (usually NetworkHub)
+    AllowedPattern: '^[0-9]{12}$'
+    MinLength: 12
+    MaxLength: 12
+    Default: 220969071716
+  BaselineCloudTrailStackArn:
+    Type: String
+    Description: ARN of the StackSet deployed from Control Tower (AWSControlTowerBP-BASELINE-CLOUDTRAIL in mgmt account)
+
+Resources:
+  FlowLogHubRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: FlowLogHubRole
+      Description: FlowLog - Role assumed by Lambda in Hub Account
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              AWS: !Join
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref EventBusDestinationAccount
+                  - ':root'
+            Action:
+              - "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref OrganizationId
+      Path: "/"
+      Policies:
+      - PolicyName: FlowLogHubPolicy
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+              - cloudformation:ListStackInstances
+            Resource:
+              -  !Ref BaselineCloudTrailStackArn
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: "Explicit role name required for reference on other resources" 

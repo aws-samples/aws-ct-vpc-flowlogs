@@ -28,6 +28,7 @@ logging.getLogger('botocore').setLevel(logging.CRITICAL)
 
 session = boto3.Session()
 
+
 def list_stack_instance_by_account(target_session, stack_set_name, account_id):
     '''
     List all stack instances based on the StackSet name and Account Id
@@ -41,16 +42,17 @@ def list_stack_instance_by_account(target_session, stack_set_name, account_id):
         }
         stackset_result = cfn_paginator.paginate(**operation_parameters)
         stackset_list = []
-        
+
         for page in stackset_result:
             if 'Summaries' in page:
                 stackset_list.extend(page['Summaries'])
-        
+
         return stackset_list
-        
+
     except Exception as e:
         LOGGER.error("List Stack Instance error: %s" % e)
         return []
+
 
 def list_stack_instance_region(target_session, stack_set_name):
     '''
@@ -64,18 +66,19 @@ def list_stack_instance_region(target_session, stack_set_name):
         }
         stackset_result = cfn_paginator.paginate(**operation_parameters)
         stackset_list_region = []
-        
+
         for page in stackset_result:
             for instance in page['Summaries']:
                 stackset_list_region.append(instance['Region'])
-                
-        stackset_list_region=list(set(stackset_list_region))
-    
+
+        stackset_list_region = list(set(stackset_list_region))
+
         return stackset_list_region
 
     except Exception as e:
         LOGGER.error("List Stack Instance error: %s" % e)
         return []
+
 
 def create_stack_instance(target_session, stackset_name, account, regions):
     '''
@@ -87,13 +90,15 @@ def create_stack_instance(target_session, stackset_name, account, regions):
             StackSetName=stackset_name,
             Accounts=account,
             Regions=regions
-            )
+        )
         LOGGER.debug(response)
-        LOGGER.info("Launched stackset instance {} for account {} in regions: {} with Operation id: {}".format(stackset_name, account, regions, response["OperationId"]))
+        LOGGER.info("Launched stackset instance {} for account {} in regions: {} with Operation id: {}".format(
+            stackset_name, account, regions, response["OperationId"]))
         return True
     except Exception as e:
         LOGGER.error("Could not create stackset instance : {}".format(e))
         return False
+
 
 def get_accounts_by_ou(target_session, ou_id):
     '''
@@ -116,12 +121,13 @@ def get_accounts_by_ou(target_session, ou_id):
         for account in accounts_list:
             if account['Status'] == 'ACTIVE':
                 active_accounts_list.append(account['Id'])
-        
+
         return active_accounts_list
-    
+
     except ClientError as e:
         LOGGER.error("Organization get accounts by OU error : {}".format(e))
         return []
+
 
 def lambda_handler(event, context):
     LOGGER.info('Lambda Handler - Start')
@@ -131,17 +137,17 @@ def lambda_handler(event, context):
     if 'detail' in event and event['detail']['eventName'] == 'CreateManagedAccount':
         if event['detail']['serviceEventDetails']['createManagedAccountStatus']['state'] == 'SUCCEEDED':
             account_id = event['detail']['serviceEventDetails']['createManagedAccountStatus']['account']['accountId']
-            
-            #find if existing stackset instance for this account already exist            
+
+            # find if existing stackset instance for this account already exist
             stackset_name = (str(os.environ["stack_set_arn"]).split(":")[5]).split("/")[1]
             stackset_instances = list_stack_instance_by_account(session, stackset_name, account_id)
             stackset_instances_regions = list_stack_instance_region(session, stackset_name)
-            
-            #stackset instance does not exist, create a new one
+
+            # stackset instance does not exist, create a new one
             if len(stackset_instances) == 0:
                 create_stack_instance(session, stackset_name, [account_id], stackset_instances_regions)
-            
-            #stackset instance already exist, check for missing region
+
+            # stackset instance already exist, check for missing region
             elif len(stackset_instances) > 0:
                 stackset_region = []
                 for instance in stackset_instances:
@@ -152,7 +158,7 @@ def lambda_handler(event, context):
                 else:
                     LOGGER.info("Stackset instance already exist : {}".format(stackset_instances))
         else:
-             LOGGER.error("Invalid event state, expected: SUCCEEDED : {}".format(event))
+            LOGGER.error("Invalid event state, expected: SUCCEEDED : {}".format(event))
     else:
         LOGGER.error("Invalid event received : {}".format(event))
 

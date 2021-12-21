@@ -1,0 +1,141 @@
+#
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this
+# software and associated documentation files (the "Software"), to deal in the Software
+# without restriction, including without limitation the rights to use, copy, modify,
+# merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create a S3 storage bucket in the audit account.
+
+Parameters:
+  OrganizationId:
+    Type: 'String'
+    Description: ID of the AWS Organization of the Landing Zone
+  SSEAlgorithm:
+    Type: 'String'
+    Default: 'AES256'
+    Description: S3 bucket SSE Algorithm.
+    AllowedValues:
+    - 'AES256'
+    - 'aws:kms'
+  KMSMasterKeyID:
+    Type: 'String'
+    Description: 'KMS key ID required if SSE algorithm is aws:kms.'
+
+Conditions:
+  UseKMS: !Equals
+    - !Ref SSEAlgorithm
+    - 'aws:kms'
+  UseAES256: !Equals
+    - !Ref SSEAlgorithm
+    - 'AES256'
+
+Resources:
+
+  S3BucketFlowLoggingSSE:
+    Type: AWS::S3::Bucket
+    Condition: UseAES256
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName:  !Sub control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration: 
+          - ServerSideEncryptionByDefault: 
+              SSEAlgorithm: AES256
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W35
+            reason: "Supress bucket access logging requirement"
+
+  S3BucketFlowLoggingKMS:
+    Type: AWS::S3::Bucket
+    Condition: UseKMS
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName:  !Sub control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration: 
+          - ServerSideEncryptionByDefault:
+              KMSMasterKeyID: !Ref KMSMasterKeyID
+              SSEAlgorithm: !Ref SSEAlgorithm
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W35
+            reason: "Supress bucket access logging requirement"
+
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F16
+            reason: "We can allow * for the Principal as we are limiting access to the Org."
+    Properties:
+      Bucket: !If [UseAES256, !Ref S3BucketFlowLoggingSSE, !Ref S3BucketFlowLoggingKMS]
+      PolicyDocument:
+        Id: S3BucketPolicy
+        Version: 2012-10-17
+        Statement:
+          - Sid: AWSLogDeliveryWrite
+            Effect: Allow
+            Principal:
+              Service: 'delivery.logs.amazonaws.com'
+            Action:
+              - 's3:PutObject'
+            Resource:
+              - !Sub "arn:aws:s3:::control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}/*"
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+          - Sid: AWSLogDeliveryAclCheck
+            Effect: Allow
+            Principal:
+              Service: 'delivery.logs.amazonaws.com'
+            Action:
+              - 's3:GetBucketAcl'
+            Resource:
+              - !Sub "arn:aws:s3:::control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}"
+          - Sid: AllowOrganizationRead # Change this to suit your needs. This gives anyone read access to the VPC flow logs in your AWS Org.
+            Effect: Allow
+            Principal: "*"
+            Action: 
+              - s3:GetObject
+            Resource:
+              - !Sub "arn:aws:s3:::control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}/*"
+            Condition: 
+              StringEquals:
+                aws:PrincipalOrgID: !Ref OrganizationId
+          - Sid: AllowSSLRequestsOnly
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Sub "arn:aws:s3:::control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}"
+              - !Sub "arn:aws:s3:::control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+Outputs:
+  oBucketName:
+    Description: AWS Control Tower bucket name
+    Value: !If [UseAES256, !Ref S3BucketFlowLoggingSSE, !Ref S3BucketFlowLoggingKMS]
