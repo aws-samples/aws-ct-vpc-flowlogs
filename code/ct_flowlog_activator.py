@@ -99,14 +99,18 @@ def parse_ec2_tag(tags):
     except Exception as e:
         LOGGER.error("Failed to parse EC2 tags: {}".format(e), exc_info=True)
 
-
-def parse_flowlog_tag(tags):
+def parse_flowlog_tag(tags, resource_type):
     '''
     Search for tags with key 'flowlog'.
-    If no tags found, default to ALL traffic.
+    If no tags found on VPC, default to ALL traffic.
+    If no tags found on Subnet, do nothing
     '''
     try:
-        flowlog_tag = get_flowlog_filter(os.environ['default_traffic_to_log'])
+        if resource_type == "VPC": 
+            flowlog_tag = get_flowlog_filter(os.environ['default_traffic_to_log'])
+        else: 
+            flowlog_tag = -1
+        
         if tags:
             for key, value in tags.items():
                 if str.lower(key) in tag_keyword:
@@ -279,7 +283,7 @@ def flow_log_handler(target_session, event, partition, resource_id, resource_typ
         else:
             LOGGER.info('Flow Logs currently disabled')
 
-        flowlog_tag = parse_flowlog_tag(tags)
+        flowlog_tag = parse_flowlog_tag(tags, resource_type)
         toggle_flowlog(target_session, account_id, resource_id, resource_type, flowlog_tag, flowlog_status, region)
 
     except Exception as e:
@@ -499,9 +503,9 @@ def primary_handler(context):
         worker_event['child-thread'] = str(uuid.uuid1())
         worker_event['master-thread'] = context.aws_request_id
         worker_event['account'] = account_id
-        # response = invoke_lambda(str(context.function_name), worker_event, lambda_client, 'Event')
+        response = invoke_lambda(str(context.function_name), worker_event, lambda_client, 'Event')
         LOGGER.info(f'primary_handler: executing child_handler for account {account_id}')
-        child_handler(worker_event, context)
+        LOGGER.debug(response)
 
 
 def sendCfnResponse(event, context, responseStatus, responseData, physicalResourceId=None, noEcho=False, reason=None):
