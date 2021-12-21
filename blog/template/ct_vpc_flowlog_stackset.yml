@@ -239,7 +239,6 @@ Resources:
 
   FlowLogActivator:
     Condition: CreateEventBus
-    DependsOn: FlowLogActivatorRole
     Type: "AWS::Lambda::Function"
     Properties:
       FunctionName: !Sub ${AWS::AccountId}-FlowLogActivator
