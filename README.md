@@ -11,7 +11,7 @@ There are two deployment methods:
 
 Included in this Repository is a version of the code from the blog which can be deployed via the [Customizations for Control Tower (CfCT)](https://docs.aws.amazon.com/solutions/latest/customizations-for-aws-control-tower/overview.html) solution.
 
-This version differs in that immediately on deployment, flow logs in all accounts managed by Control Tower are modified to the value of the parameter **DefaultTrafficLoggingMode** defined in the [manifest.yaml](./manifest.yaml) file. The default filter setting is 'REJECT', but if you wish to have no effect on deployment (and use the tags as per the blog post), set this to DISABLE in the manifest file.
+This version differs in that immediately on deployment, flow logs in all accounts managed by Control Tower are modified to the value of the parameter **DefaultTrafficLoggingMode** defined in the [manifest.yaml](./cfct/manifest.yaml) file. The default filter setting is 'REJECT', but if you wish to have no effect on deployment (and use the tags as per the blog post), set this to DISABLE in the manifest file.
 
 ### Zip and upload lambda
 
@@ -32,7 +32,7 @@ This deploys the `AWSControlTowerExecution` role, so that customisations such as
 
 
 CfCT Configuration:
-1. Append the 4 resources of the Resources section of the [manifest file](./manifest.yaml) to your own CfCT manifest file. 
+1. Append the 4 resources of the Resources section of the [manifest file](./cfct/manifest.yaml) to your own CfCT manifest file. 
 1. Check and configure the parameters within each resource section to reflect your environment. Substitue all `<REPLACE ME>` entries with the correct values for your environment.
 1. Deploy your CfCT solution as per your setup (using zip or codecommit etc)
 
