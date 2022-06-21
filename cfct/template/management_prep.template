@@ -32,6 +32,11 @@ Parameters:
     Description: Name of the SSM Parameter under which the AWS Organization ID of the CTLZ will be stored
     Default: /org/core/OrganizationID
 
+  NameforSSMParameterforManagementAccountId:
+    Type: String
+    Description: Name of the SSM Parameter under which the Management Account ID of the CTLZ will be stored
+    Default: /org/core/ManagementAccountId
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -50,6 +55,7 @@ Metadata:
           default: "SSM Parameter Keys"
         Parameters:
          - NameforSSMParameterforOrganizationId
+         - NameforSSMParameterforManagementAccountId
 
 Resources:
   OrganizationIDSSMParameter:
@@ -58,6 +64,13 @@ Resources:
       Name: !Ref NameforSSMParameterforOrganizationId
       Type: String
       Value: !Ref OrganizationId
+
+  ManagementAccountIDSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Ref NameforSSMParameterforManagementAccountId
+      Type: String
+      Value: !Ref ManagementAccountId
 
   AWSControlTowerExecutionforManagement:
     Type: AWS::IAM::Role
