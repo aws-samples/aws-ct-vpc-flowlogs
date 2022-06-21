@@ -27,6 +27,10 @@ Parameters:
     Type: 'String'
     Description: AWS Account ID of the Organization Management Account
 
+  LambdaStorageBucketName:
+    Type: 'String'
+    Description: S3 Bucket name containing Lambda code
+
   NameforSSMParameterforOrganizationId:
     Type: String
     Description: Name of the SSM Parameter under which the AWS Organization ID of the CTLZ will be stored
@@ -58,6 +62,13 @@ Resources:
       Name: !Ref NameforSSMParameterforOrganizationId
       Type: String
       Value: !Ref OrganizationId
+
+  LambdaStorageBucketSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /org/primary/storagebucket
+      Type: String
+      Value: !Ref LambdaStorageBucketName
 
   AWSControlTowerExecutionforManagement:
     Type: AWS::IAM::Role
