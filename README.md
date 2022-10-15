@@ -17,7 +17,8 @@ This version differs in that immediately on deployment, flow logs in all account
 
 As per other CfCT customizations, lambda's used as custom resources should be uploaded to a location prior to executing the CfCT pipeline. 
 
-To create the lambda zip, execute `./zip_lambda.sh`. This creates a `ct_flowlog_activator.zip`` file in the lambdazip folder. Upload this to a bucket under a prefix `security/vpcflowlogs/ct_flowlog_activator.zip` (Can be modified under S3LambdaBucketKey parameter in manifest.yaml) that is accessible to the AWS Organization, and enter the bucket name as parameter `LambdaStorageBucketName` when deploying the preparation template in the next step. The bucket name will be stored in an SSM parameter in mgmt account with key: `/org/primary/storagebucket`. The default values in the manifest file refer to this location (which can be changed if desired)
+To create the lambda zip, execute `./zip_lambda.sh`. This creates a `ct_flowlog_activator.zip` file in the lambdazip folder. Upload this to a bucket under a prefix `security/vpcflowlogs/ct_flowlog_activator.zip` that is accessible to the AWS Organization, and enter the bucket name as parameter `LambdaStorageBucketName` when deploying the preparation template in the next step. 
+If you prefer different prefix, modify the prefix under S3LambdaBucketKey parameter in manifest.yaml. The bucket name will be stored in an SSM parameter in mgmt account with key: `/org/primary/storagebucket`. The default values in the manifest file refer to this location (which can be changed if desired)
 
 ### CfCT configuration
 
