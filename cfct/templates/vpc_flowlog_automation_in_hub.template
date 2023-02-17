@@ -83,6 +83,10 @@ Parameters:
     - REJECT
     - ALL
     - DISABLE
+  FlowLogActivatorConcurrency:
+    Type: String
+    Default: 500
+    Description: 'The Reserved Concurrent Executions setting for the Flow Log Activator function.'
 
 Conditions:
 
@@ -223,7 +227,7 @@ Resources:
       Runtime: "python3.7"
       MemorySize: 128
       Timeout: 300
-      ReservedConcurrentExecutions: 500
+      ReservedConcurrentExecutions: !Ref FlowLogActivatorConcurrency
       Environment:
         Variables:
             assume_role: !FindInMap [LambdaVariable,Role, Spoke]
