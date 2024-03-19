@@ -32,7 +32,7 @@ Parameters:
     MinLength: 12
     MaxLength: 12
     Default: 220969071716
-  BaselineCloudTrailStackArn:
+  BaselineConfigStackArn:
     Type: String
     Description: ARN of the StackSet deployed from Control Tower (AWSControlTowerBP-BASELINE-CLOUDTRAIL in mgmt account)
 
@@ -68,7 +68,7 @@ Resources:
             Action:
               - cloudformation:ListStackInstances
             Resource:
-              -  !Ref BaselineCloudTrailStackArn
+              -  !Ref BaselineConfigStackArn
     Metadata:
       cfn_nag:
         rules_to_suppress:

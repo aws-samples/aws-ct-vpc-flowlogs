@@ -42,7 +42,7 @@ resources:
       - name: /org/sharedservice/networking/vpcflowlogsbucket
         value: $[output_oBucketName]
     regions:
-      - ap-southeast-2
+      - ap-southeast-2 # choose your control tower master region
 
   - name: VPCFlowLogsMgmtRole
     resource_file: templates/vpc_flowlog_mgmt.template
@@ -53,14 +53,14 @@ resources:
       - parameter_key: "EventBusDestinationAccount" # Typiclly this will be the NetworkHub account
         parameter_value: "<REPLACE ME>"
 
-      - parameter_key: "BaselineCloudTrailStackArn" # Copy this this from mgmt account in cloudformation stacksets for AWSControlTowerBP-BASELINE-CLOUDTRAIL
+      - parameter_key: "BaselineConfigStackArn" # Copy this this from mgmt account in cloudformation stacksets for AWSControlTowerBP-BASELINE-CLOUDTRAIL
         parameter_value: "<REPLACE ME>"
     deploy_method: stack_set
     deployment_targets:
       accounts:
-        - Management
+        - Management # Control Tower Management Account
     regions:
-      - ap-southeast-2
+      - ap-southeast-2 # choose your control tower master region
 
   - name: VPCFlowLogRoleInSpoke
     resource_file: templates/vpc_flowlog_spoke.template
@@ -96,7 +96,7 @@ resources:
         parameter_value: "$[alfred_ssm_/org/core/ManagementAccountId]"
 
       - parameter_key: "ControlTowerMasterRegion"
-        parameter_value: "ap-southeast-2"
+        parameter_value: "<REPLACE ME>"
 
       - parameter_key: "FlowLogBucketName" 
         parameter_value: "$[alfred_ssm_/org/sharedservice/networking/vpcflowlogsbucket]"
@@ -110,10 +110,10 @@ resources:
       - parameter_key: "ComplianceFrequency" # how often to check for tag updates by schedule
         parameter_value: "24"
 
-      - parameter_key: "BaselineCloudTrailStackSetName"
-        parameter_value: "AWSControlTowerBP-BASELINE-CLOUDTRAIL"  # do not change this, used to get all accounts managed by Control Tower.
+      - parameter_key: "BaselineConfigSetName"
+        parameter_value: "AWSControlTowerBP-BASELINE-CONFIG"  # do not change this, used to get all accounts managed by Control Tower.
 
-      - parameter_key: "BaselineCloudTrailStackArn"
+      - parameter_key: "BaselineConfigStackArn"
         parameter_value: "<REPLACE ME>"  # find this from mgmt account in cloudformation stacksets
 
       - parameter_key: "S3LambdaBucket"
@@ -127,6 +127,6 @@ resources:
     deploy_method: stack_set
     deployment_targets:
       accounts:
-        - NetworkingHub
+        - NetworkingHub # This should match your EventBusDestination Account
     regions:
-      - ap-southeast-2
+      - ap-southeast-2 # choose your control tower master region
