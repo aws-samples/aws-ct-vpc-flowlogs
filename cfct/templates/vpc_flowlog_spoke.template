@@ -143,7 +143,7 @@ Resources:
         }
       State: ENABLED
       Targets:
-        - Arn: !Sub arn:aws:events:${AWS::Region}:${EventBusDestinationAccount}:event-bus/${EventBusName}
+        - Arn: !Sub arn:aws:events:${ControlTowerMasterRegion}:${EventBusDestinationAccount}:event-bus/${EventBusName}
           Id: "TagCreateUpdateTrigger"
           RoleArn: !GetAtt FlowLogTagSpokeRuleDeliveryRole.Arn
 
@@ -169,4 +169,4 @@ Resources:
               - Effect: Allow
                 Action:
                   - events:PutEvents
-                Resource: !Sub arn:aws:events:${AWS::Region}:${EventBusDestinationAccount}:event-bus/${EventBusName}
+                Resource: !Sub arn:aws:events:${ControlTowerMasterRegion}:${EventBusDestinationAccount}:event-bus/${EventBusName}

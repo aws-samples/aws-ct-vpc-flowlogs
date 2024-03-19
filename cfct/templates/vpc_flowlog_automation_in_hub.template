@@ -18,11 +18,11 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: FlowLog - Infrastructure at the spoke account for VPC Flow Log automation
 Parameters:
-  BaselineCloudTrailStackSetName:
+  BaselineConfigStackSetName:
     Type: String
     Description: Name of the StackSet to find accounts from. Do not change from default unless you know what you are doing.
     Default: AWSControlTowerBP-BASELINE-CLOUDTRAIL
-  BaselineCloudTrailStackArn:
+  BaselineConfigStackArn:
     Type: String
     Description: ARN of the StackSet to find accounts from.
   OrganizationId:
@@ -143,7 +143,7 @@ Resources:
             Action:
               - cloudformation:ListStackInstances
             Resource:
-              -  !Ref BaselineCloudTrailStackArn
+              -  !Ref BaselineConfigStackArn
     Metadata:
       cfn_nag:
         rules_to_suppress:
@@ -224,7 +224,7 @@ Resources:
       Code:
         S3Bucket: !Ref S3LambdaBucket
         S3Key: !Ref S3LambdaBucketKey
-      Runtime: "python3.7"
+      Runtime: "python3.12"
       MemorySize: 128
       Timeout: 300
       ReservedConcurrentExecutions: !Ref FlowLogActivatorConcurrency
@@ -235,7 +235,7 @@ Resources:
             s3bucket: !Ref FlowLogBucketName
             master_account: !Ref MgmtAccountId
             master_role: !FindInMap [LambdaVariable,Role, Hub]
-            stackset_name: !Ref BaselineCloudTrailStackSetName
+            stackset_name: !Ref BaselineConfigStackSetName
             stackset_region: !Ref ControlTowerMasterRegion
             tag_keys: !FindInMap [LambdaVariable,Tag, Key]
             tag_all_values: !FindInMap [LambdaVariable,Tag, All]
