@@ -88,15 +88,6 @@ Parameters:
     Default: 500
     Description: 'The Reserved Concurrent Executions setting for the Flow Log Activator function.'
 
-Conditions:
-
-  CreateEventBusOriginRegion: !And
-    - !Equals
-      - !Ref EventBusDestinationAccount
-      - !Ref AWS::AccountId
-    - !Equals 
-      - !Ref ControlTowerMasterRegion
-      - !Ref AWS::Region
 
 Mappings:
   LambdaVariable:
@@ -168,10 +159,8 @@ Resources:
             Value: !Ref OrganizationId
 
   FlowLogActivatorRole:
-    Condition: CreateEventBusOriginRegion
     Type: AWS::IAM::Role
     Properties:
-      RoleName: FlowLogActivatorRole
       Description: FlowLog - Role used by Lambda in Hub Account to enable VPC Flow Log
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -220,11 +209,11 @@ Resources:
       FunctionName: FlowLogActivator
       Description: FlowLog - Function to handle incoming events and activate VPC Flow Log in spoke account
       Handler: "ct_flowlog_activator.lambda_handler"
-      Role: !Sub 'arn:aws:iam::${AWS::AccountId}:role/FlowLogActivatorRole'
+      Role: !GetAtt FlowLogActivatorRole.Arn
       Code:
         S3Bucket: !Ref S3LambdaBucket
         S3Key: !Ref S3LambdaBucketKey
-      Runtime: "python3.7"
+      Runtime: "python3.12"
       MemorySize: 128
       Timeout: 300
       ReservedConcurrentExecutions: !Ref FlowLogActivatorConcurrency

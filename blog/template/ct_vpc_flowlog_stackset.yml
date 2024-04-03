@@ -95,14 +95,6 @@ Conditions:
     - !Ref EventBusDestinationAccount
     - !Ref AWS::AccountId
 
-  CreateEventBusOriginRegion: !And
-    - !Equals
-      - !Ref EventBusDestinationAccount
-      - !Ref AWS::AccountId
-    - !Equals 
-      - !Ref MasterRegion
-      - !Ref AWS::Region
-
   NonEventBus: !Not
     - !Equals
       - !Ref EventBusDestinationAccount
@@ -190,10 +182,9 @@ Resources:
             Value: !Ref OrgId
 
   FlowLogActivatorRole:
-    Condition: CreateEventBusOriginRegion
+    Condition: CreateEventBus
     Type: AWS::IAM::Role
     Properties:
-      RoleName: FlowLogActivatorRole
       Description: FlowLog - Role used by Lambda in Hub Account to enable VPC Flow Log
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -244,11 +235,11 @@ Resources:
       FunctionName: !Sub ${AWS::AccountId}-FlowLogActivator
       Description: FlowLog - Function to handle incoming events and activate VPC Flow Log in spoke account
       Handler: "ct_flowlog_activator.lambda_handler"
-      Role: !Sub 'arn:aws:iam::${AWS::AccountId}:role/FlowLogActivatorRole'
+      Role: !GetAtt FlowLogActivatorRole.Arn
       Code:
         S3Bucket: !FindInMap [ S3perRegion, !Ref "AWS::Region", NAME ]
         S3Key: !Join ["/", [!FindInMap ["SourceCode", "Key", "Activator"]]]
-      Runtime: "python3.7"
+      Runtime: "python3.12"
       MemorySize: 128
       Timeout: 300
       ReservedConcurrentExecutions: 500

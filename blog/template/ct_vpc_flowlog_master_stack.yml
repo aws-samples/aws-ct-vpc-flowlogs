@@ -118,7 +118,7 @@ Resources:
       Code:
         S3Bucket: !FindInMap [ S3perRegion, !Ref "AWS::Region", NAME ]
         S3Key: !Join ["/", [!FindInMap ["SourceCode", "Key", "LifeCycle"]]]
-      Runtime: "python3.7"
+      Runtime: "python3.12"
       MemorySize: 128
       Timeout: 300
       Environment:
