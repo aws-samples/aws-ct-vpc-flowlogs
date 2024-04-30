@@ -106,6 +106,7 @@ Resources:
             Condition:
               StringEquals:
                 s3:x-amz-acl: bucket-owner-full-control
+                aws:SourceOrgID: !Ref OrganizationId
           - Sid: AWSLogDeliveryAclCheck
             Effect: Allow
             Principal:
@@ -114,16 +115,29 @@ Resources:
               - 's3:GetBucketAcl'
             Resource:
               - !Sub "arn:aws:s3:::control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}"
-          - Sid: AllowOrganizationRead # Change this to suit your needs. This gives anyone read access to the VPC flow logs in your AWS Org.
+            Condition:
+              StringEquals:
+                aws:SourceOrgID: !Ref OrganizationId
+          - Sid: AllowOrganizationAcctRead # Policy to allow each account to see/read only their own data in bucket
             Effect: Allow
-            Principal: "*"
+            Principal: { "AWS":"*"}
             Action: 
               - s3:GetObject
             Resource:
-              - !Sub "arn:aws:s3:::control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}/*"
+              - !Sub "arn:aws:s3:::control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}/AWSLogs/${!aws:PrincipalAccount}/*"
             Condition: 
               StringEquals:
                 aws:PrincipalOrgID: !Ref OrganizationId
+          - Sid: AllowListBucketAcct
+            Effect: Allow
+            Principal: {"AWS":"*"}
+            Action: 's3:ListBucket'
+            Resource: 
+              - !Sub "arn:aws:s3:::control-tower-vpcflowlogs-${AWS::AccountId}-${AWS::Region}"
+            Condition:
+              StringLike: 
+                s3:prefix: 'AWSLogs/${aws:PrincipalAccount}/*'
+                aws:PrincipalOrgId: !Ref OrganizationId
           - Sid: AllowSSLRequestsOnly
             Effect: Deny
             Principal: '*'
