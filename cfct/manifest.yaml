@@ -43,6 +43,8 @@ resources:
         value: $[output_oBucketName]
     regions:
       - ap-southeast-2
+#     - another-region-1
+#     - another-region-2
 
   - name: VPCFlowLogsMgmtRole
     resource_file: templates/vpc_flowlog_mgmt.template
@@ -53,7 +55,7 @@ resources:
       - parameter_key: "EventBusDestinationAccount" # Typiclly this will be the NetworkHub account
         parameter_value: "<REPLACE ME>"
 
-      - parameter_key: "BaselineCloudTrailStackArn" # Copy this this from mgmt account in cloudformation stacksets for AWSControlTowerBP-BASELINE-CLOUDTRAIL
+      - parameter_key: "BaselineCloudWatchStackArn" # Copy this this from mgmt account in cloudformation stacksets for AWSControlTowerBP-BASELINE-CLOUDWATCH
         parameter_value: "<REPLACE ME>"
     deploy_method: stack_set
     deployment_targets:
@@ -61,6 +63,8 @@ resources:
         - Management
     regions:
       - ap-southeast-2
+#     - another-region-1
+#     - another-region-2
 
   - name: VPCFlowLogRoleInSpoke
     resource_file: templates/vpc_flowlog_spoke.template
@@ -78,13 +82,15 @@ resources:
         parameter_value: "<REPLACE ME>"
     deploy_method: stack_set
     deployment_targets:
-      organizational_units: # List here all the OUs you wish to apply the VPC Flow Logs to
+      organizational_units: # List here all the OUs you wish to apply the VPC Flow Logs to. "Root" for the whole org
         - Security
         - Infrastructure
         - NonProduction
         - Production
     regions:
       - ap-southeast-2
+#     - another-region-1
+#     - another-region-2
 
   - name: VPCFlowLogAutomationInHub
     resource_file: templates/vpc_flowlog_automation_in_hub.template
@@ -96,7 +102,7 @@ resources:
         parameter_value: "$[alfred_ssm_/org/core/ManagementAccountId]"
 
       - parameter_key: "ControlTowerMasterRegion"
-        parameter_value: "ap-southeast-2"
+        parameter_value: "<REPLACE ME>"
 
       - parameter_key: "FlowLogBucketName" 
         parameter_value: "$[alfred_ssm_/org/sharedservice/networking/vpcflowlogsbucket]"
@@ -107,13 +113,13 @@ resources:
       - parameter_key: "EventBusName"
         parameter_value: "FlowLog-EventBus"
 
-      - parameter_key: "ComplianceFrequency" # how often to check for tag updates by schedule
+      - parameter_key: "ComplianceFrequency" # how often to check for tag updates by schedule, in hours
         parameter_value: "24"
 
-      - parameter_key: "BaselineCloudTrailStackSetName"
-        parameter_value: "AWSControlTowerBP-BASELINE-CLOUDTRAIL"  # do not change this, used to get all accounts managed by Control Tower.
+      - parameter_key: "BaselineCloudWatchStackSetName"
+        parameter_value: "AWSControlTowerBP-BASELINE-CLOUDWATCH"  # do not change this, used to get all accounts managed by Control Tower.
 
-      - parameter_key: "BaselineCloudTrailStackArn"
+      - parameter_key: "BaselineCloudWatchStackArn"
         parameter_value: "<REPLACE ME>"  # find this from mgmt account in cloudformation stacksets
 
       - parameter_key: "S3LambdaBucket"
@@ -129,4 +135,5 @@ resources:
       accounts:
         - NetworkingHub
     regions:
-      - ap-southeast-2
+# This should only be deployed to the ONE Control Tower Master Region, no others.
+      - ap-southeast-2 
